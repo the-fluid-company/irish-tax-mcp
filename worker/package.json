@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "typecheck": "tsc --noEmit"
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@irish-tax-mcp/core": "*",
-    "@irish-tax-mcp/reference": "*"
+    "@irish-tax-mcp/core": "1.0.0",
+    "@irish-tax-mcp/reference": "1.0.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241022.0",

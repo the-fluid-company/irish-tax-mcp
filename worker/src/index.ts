@@ -6,7 +6,12 @@ import {
   calculateStampDuty,
   calculateVat,
 } from '@irish-tax-mcp/core';
-import { getRates, getTopicReference } from '@irish-tax-mcp/reference';
+import {
+  getRates,
+  getSupportedYears,
+  getTopicReference,
+  INFORMATIONAL_DISCLAIMER,
+} from '@irish-tax-mcp/reference';
 import { TOOL_LIST } from './tools.js';
 import {
   parseCalculateAnnualPersonalTax,
@@ -18,125 +23,184 @@ import {
   parseReferenceLookup,
 } from './validation.js';
 
-function json(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json', ...corsHeaders() },
-  });
-}
+const SERVICE_NAME = 'irish-tax-mcp';
+const SERVICE_VERSION = '1.0.0';
 
 function corsHeaders(): HeadersInit {
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
+    'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
   };
 }
 
-function mcpError(code: string, message: string, status = 400): Response {
-  return new Response(JSON.stringify({ error: { code, message } }), {
+function json(data: unknown, status = 200): Response {
+  return new Response(JSON.stringify(data), {
     status,
-    headers: { 'Content-Type': 'application/json', ...corsHeaders() },
+    headers: { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders() },
   });
 }
 
-function handleToolCall(name: string, input: unknown): unknown {
+function mcpError(code: string, message: string, status = 400): Response {
+  return json(
+    {
+      error: { code, message },
+      service: SERVICE_NAME,
+      version: SERVICE_VERSION,
+    },
+    status,
+  );
+}
+
+function methodNotAllowed(allowed: string[]): Response {
+  return new Response(
+    JSON.stringify({
+      error: {
+        code: 'method_not_allowed',
+        message: `Method not allowed. Allowed methods: ${allowed.join(', ')}`,
+      },
+      service: SERVICE_NAME,
+      version: SERVICE_VERSION,
+    }),
+    {
+      status: 405,
+      headers: {
+        'Allow': allowed.join(', '),
+        'Content-Type': 'application/json; charset=utf-8',
+        ...corsHeaders(),
+      },
+    },
+  );
+}
+
+function annotateResult<T extends Record<string, unknown>>(result: T, year: number): T & {
+  year: number;
+  informationalOnly: true;
+  disclaimer: string;
+  supportedYears: number[];
+} {
+  return {
+    ...result,
+    year,
+    informationalOnly: true,
+    disclaimer: INFORMATIONAL_DISCLAIMER,
+    supportedYears: getSupportedYears(),
+  };
+}
+
+function handleToolCall(name: string, input: unknown): Record<string, unknown> {
   switch (name) {
     case 'calculate_income_tax': {
       const { year, params } = parseCalculateIncomeTax(input);
       const rates = getRates(year);
       const result = calculateIncomeTax(params, rates);
-      return {
-        ...result,
-        grossIncomeEur: result.grossIncomeCents / 100,
-        netIncomeEur: result.netIncomeCents / 100,
-        incomeTaxEur: result.incomeTaxCents / 100,
-        uscEur: result.uscCents / 100,
-        prsiEur: result.prsiCents / 100,
-        totalDeductionsEur: result.totalDeductionsCents / 100,
-        effectiveRate: result.grossIncomeCents === 0 ? 0 : result.totalDeductionsCents / result.grossIncomeCents,
+      return annotateResult(
+        {
+          ...result,
+          grossIncomeEur: result.grossIncomeCents / 100,
+          netIncomeEur: result.netIncomeCents / 100,
+          incomeTaxEur: result.incomeTaxCents / 100,
+          uscEur: result.uscCents / 100,
+          prsiEur: result.prsiCents / 100,
+          totalDeductionsEur: result.totalDeductionsCents / 100,
+          effectiveRate:
+            result.grossIncomeCents === 0 ? 0 : result.totalDeductionsCents / result.grossIncomeCents,
+        },
         year,
-      };
+      );
     }
 
     case 'calculate_annual_personal_tax': {
       const { year, params } = parseCalculateAnnualPersonalTax(input);
       const rates = getRates(year);
       const result = calculateAnnualPersonalTax(params, rates);
-      return {
-        ...result,
-        totalGrossIncomeEur: result.totalGrossIncomeCents / 100,
-        grossIncomeTaxEur: result.grossIncomeTaxCents / 100,
-        incomeTaxEur: result.incomeTaxCents / 100,
-        uscEur: result.uscCents / 100,
-        prsiEur: result.prsiCents / 100,
-        totalDeductionsEur: result.totalDeductionsCents / 100,
-        netIncomeEur: result.netIncomeCents / 100,
+      return annotateResult(
+        {
+          ...result,
+          totalGrossIncomeEur: result.totalGrossIncomeCents / 100,
+          grossIncomeTaxEur: result.grossIncomeTaxCents / 100,
+          incomeTaxEur: result.incomeTaxCents / 100,
+          uscEur: result.uscCents / 100,
+          prsiEur: result.prsiCents / 100,
+          totalDeductionsEur: result.totalDeductionsCents / 100,
+          netIncomeEur: result.netIncomeCents / 100,
+        },
         year,
-      };
+      );
     }
 
     case 'calculate_vat': {
       const { year, params } = parseCalculateVat(input);
       const rates = getRates(year);
       const result = calculateVat(params, rates);
-      return {
-        ...result,
-        netEur: result.netCents / 100,
-        vatEur: result.vatCents / 100,
-        grossEur: result.grossCents / 100,
-        ratePercent: `${result.rate * 100}%`,
+      return annotateResult(
+        {
+          ...result,
+          netEur: result.netCents / 100,
+          vatEur: result.vatCents / 100,
+          grossEur: result.grossCents / 100,
+          ratePercent: `${result.rate * 100}%`,
+        },
         year,
-      };
+      );
     }
 
     case 'calculate_cgt': {
       const { year, params } = parseCalculateCgt(input);
       const rates = getRates(year);
       const result = calculateCgt(params, rates);
-      return {
-        ...result,
-        gainEur: result.gainCents / 100,
-        annualExemptionAppliedEur: result.annualExemptionAppliedCents / 100,
-        taxableGainEur: result.taxableGainCents / 100,
-        cgtDueEur: result.cgtDueCents / 100,
-        ratePercent: `${result.rate * 100}%`,
+      return annotateResult(
+        {
+          ...result,
+          gainEur: result.gainCents / 100,
+          annualExemptionAppliedEur: result.annualExemptionAppliedCents / 100,
+          taxableGainEur: result.taxableGainCents / 100,
+          cgtDueEur: result.cgtDueCents / 100,
+          ratePercent: `${result.rate * 100}%`,
+        },
         year,
-      };
+      );
     }
 
     case 'calculate_stamp_duty': {
       const { year, params } = parseCalculateStampDuty(input);
       const rates = getRates(year);
       const result = calculateStampDuty(params, rates);
-      return {
-        ...result,
-        considerationEur: result.considerationCents / 100,
-        dutyDueEur: result.dutyDueCents / 100,
-        effectiveRatePercent: `${(result.effectiveRate * 100).toFixed(3)}%`,
+      return annotateResult(
+        {
+          ...result,
+          considerationEur: result.considerationCents / 100,
+          dutyDueEur: result.dutyDueCents / 100,
+          effectiveRatePercent: `${(result.effectiveRate * 100).toFixed(3)}%`,
+        },
         year,
-      };
+      );
     }
 
     case 'calculate_cat': {
       const { year, params } = parseCalculateCat(input);
       const rates = getRates(year);
       const result = calculateCat(params, rates);
-      return {
-        ...result,
-        benefitEur: result.benefitCents / 100,
-        thresholdEur: result.thresholdCents / 100,
-        taxableAmountEur: result.taxableAmountCents / 100,
-        catDueEur: result.catDueCents / 100,
-        remainingThresholdEur: result.remainingThresholdCents / 100,
-        ratePercent: `${result.rate * 100}%`,
+      return annotateResult(
+        {
+          ...result,
+          benefitEur: result.benefitCents / 100,
+          thresholdEur: result.thresholdCents / 100,
+          taxableAmountEur: result.taxableAmountCents / 100,
+          catDueEur: result.catDueCents / 100,
+          remainingThresholdEur: result.remainingThresholdCents / 100,
+          ratePercent: `${result.rate * 100}%`,
+        },
         year,
-      };
+      );
     }
 
     case 'tax_reference_lookup': {
       const { topic, year } = parseReferenceLookup(input);
-      return getTopicReference(topic, year);
+      const result = getTopicReference(topic, year) as Record<string, unknown>;
+      return annotateResult(result, year);
     }
 
     default:
@@ -153,14 +217,37 @@ export default {
     }
 
     if (url.pathname === '/health') {
-      return json({ status: 'ok', service: 'irish-tax-mcp', version: '1.0.0' });
+      if (request.method !== 'GET') {
+        return methodNotAllowed(['GET', 'OPTIONS']);
+      }
+
+      return json({
+        status: 'ok',
+        service: SERVICE_NAME,
+        version: SERVICE_VERSION,
+        supportedYears: getSupportedYears(),
+        informationalOnly: true,
+      });
     }
 
-    if (url.pathname === '/tools/list' && request.method === 'GET') {
-      return json({ tools: TOOL_LIST });
+    if (url.pathname === '/tools/list') {
+      if (request.method !== 'GET') {
+        return methodNotAllowed(['GET', 'OPTIONS']);
+      }
+
+      return json({
+        tools: TOOL_LIST,
+        informationalOnly: true,
+        disclaimer: INFORMATIONAL_DISCLAIMER,
+        supportedYears: getSupportedYears(),
+      });
     }
 
-    if (url.pathname === '/tools/call' && request.method === 'POST') {
+    if (url.pathname === '/tools/call') {
+      if (request.method !== 'POST') {
+        return methodNotAllowed(['POST', 'OPTIONS']);
+      }
+
       let body: { name?: unknown; input?: unknown };
       try {
         body = await request.json();
@@ -175,7 +262,11 @@ export default {
 
       try {
         const result = handleToolCall(name, input);
-        return json({ content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] });
+        return json({
+          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+          service: SERVICE_NAME,
+          version: SERVICE_VERSION,
+        });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         if (message.startsWith('Unknown tool:')) {

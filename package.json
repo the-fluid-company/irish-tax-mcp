@@ -1,6 +1,9 @@
 {
   "name": "irish-tax-mcp",
   "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "workspaces": [
     "packages/*",
     "worker"
@@ -9,10 +12,12 @@
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "build": "npm run build --workspaces --if-present",
-    "validate-rates": "npx tsx scripts/validate-rates.ts"
+    "validate-rates": "npx tsx scripts/validate-rates.ts",
+    "check": "npm run typecheck && npm run test && npm run build && npm run validate-rates"
   },
   "devDependencies": {
+    "tsx": "^4.19.0",
     "typescript": "^5.7.0",
-    "tsx": "^4.19.0"
+    "vitest": "^2.1.8"
   }
 }

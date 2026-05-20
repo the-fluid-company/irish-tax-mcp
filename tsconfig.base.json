@@ -4,6 +4,11 @@
     "lib": ["ES2022"],
     "module": "ES2022",
     "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@irish-tax-mcp/core": ["packages/core/src/index.ts"],
+      "@irish-tax-mcp/reference": ["packages/reference/src/index.ts"]
+    },
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitReturns": true,

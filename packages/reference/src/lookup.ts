@@ -1,8 +1,11 @@
 import data2025 from '../data/2025.json';
 import type { TaxRates } from '@irish-tax-mcp/core';
 
-const SUPPORTED_YEARS = [2025] as const;
+export const SUPPORTED_YEARS = [2025] as const;
 type SupportedYear = (typeof SUPPORTED_YEARS)[number];
+
+export const INFORMATIONAL_DISCLAIMER =
+  'Informational Irish tax output only. Standard deterministic scenarios are covered, but you should verify material decisions with Revenue or a qualified tax professional.';
 
 function isSupportedYear(year: number): year is SupportedYear {
   return (SUPPORTED_YEARS as readonly number[]).indexOf(year) !== -1;
@@ -17,6 +20,10 @@ function centsRecordToEur(record: Record<string, number>): Record<string, number
     }
   }
   return result;
+}
+
+export function getSupportedYears(): number[] {
+  return [...SUPPORTED_YEARS];
 }
 
 export function getRates(year: number): TaxRates {

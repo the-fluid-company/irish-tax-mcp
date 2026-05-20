@@ -23,8 +23,11 @@ It does not attempt to automate judgement-heavy advice or facts not encoded in i
 
 ### Calculators
 - Income tax + USC + PRSI
+- Annual personal tax across multiple income sources
 - VAT
 - CGT
+- Stamp duty
+- CAT
 
 ### Reference lookup
 - income tax
@@ -47,7 +50,7 @@ It does not attempt to automate judgement-heavy advice or facts not encoded in i
 - `worker` — Cloudflare Worker with public MCP-style endpoints
 - `skills/irish-tax` — finance-style skill package
 - `scripts` — validation scripts
-- `docs` — user and maintenance docs
+- `docs` — API and production runbook docs
 
 ## Usage
 
@@ -55,6 +58,12 @@ It does not attempt to automate judgement-heavy advice or facts not encoded in i
 
 ```bash
 npm install
+```
+
+### Run the full verification suite
+
+```bash
+npm run check
 ```
 
 ### Run tests
@@ -86,6 +95,8 @@ npm run dev --workspace @irish-tax-mcp/worker
 ```bash
 npm run deploy --workspace @irish-tax-mcp/worker
 ```
+
+See `docs/api.md` for endpoint contracts and `docs/production-runbook.md` for release, smoke-test, and rollback steps.
 
 ## Design principles
 
