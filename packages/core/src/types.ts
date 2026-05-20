@@ -185,3 +185,115 @@ export interface AnnualPersonalTaxResult {
   totalDeductionsCents: number;
   netIncomeCents: number;
 }
+
+export interface TaxpayerProfile {
+  filingStatus: FilingStatus;
+  residencyStatus?: 'resident' | 'non_resident' | 'unknown';
+}
+
+export interface TaxCaseFact {
+  key: string;
+  value: string;
+  source?: string;
+}
+
+export interface ProfessionalCapitalGainEntry {
+  gainCents: number;
+  description?: string;
+}
+
+export interface ProfessionalVatEntry {
+  amountCents: number;
+  vatCode: VatCode;
+  direction: VatDirection;
+  description?: string;
+}
+
+export interface ProfessionalStampDutyEntry {
+  considerationCents: number;
+  propertyType: StampDutyPropertyType;
+  description?: string;
+}
+
+export interface ProfessionalCatEntry {
+  kind: 'gift' | 'inheritance';
+  benefitCents: number;
+  group: CatGroup;
+  priorTaxableBenefitsCents?: number;
+  applySmallGiftExemption?: boolean;
+  description?: string;
+}
+
+export interface ProfessionalTaxReasoningParams {
+  taxpayer: TaxpayerProfile;
+  creditKeys?: TaxCreditKey[];
+  incomeSources?: AnnualPersonalTaxIncomeSource[];
+  capitalGains?: ProfessionalCapitalGainEntry[];
+  vatTransactions?: ProfessionalVatEntry[];
+  propertyTransactions?: ProfessionalStampDutyEntry[];
+  giftsAndInheritances?: ProfessionalCatEntry[];
+  suppliedFacts?: TaxCaseFact[];
+  rawArtifacts?: string[];
+}
+
+export interface ProfessionalCapitalGainEntryResult extends CgtResult {
+  description?: string;
+}
+
+export interface ProfessionalVatEntryResult extends VatResult {
+  amountCents: number;
+  direction: VatDirection;
+  description?: string;
+}
+
+export interface ProfessionalStampDutyEntryResult extends StampDutyResult {
+  description?: string;
+}
+
+export interface ProfessionalCatEntryResult extends CatResult {
+  kind: 'gift' | 'inheritance';
+  description?: string;
+}
+
+export interface ProfessionalTaxReasoningResult {
+  taxpayer: TaxpayerProfile;
+  modulesTriggered: string[];
+  personalTax?: AnnualPersonalTaxResult;
+  capitalGains?: {
+    entries: ProfessionalCapitalGainEntryResult[];
+    totalGainCents: number;
+    totalTaxableGainCents: number;
+    totalCgtDueCents: number;
+  };
+  vat?: {
+    entries: ProfessionalVatEntryResult[];
+    totalNetCents: number;
+    totalVatCents: number;
+    totalGrossCents: number;
+  };
+  stampDuty?: {
+    entries: ProfessionalStampDutyEntryResult[];
+    totalConsiderationCents: number;
+    totalDutyDueCents: number;
+  };
+  cat?: {
+    entries: ProfessionalCatEntryResult[];
+    totalBenefitCents: number;
+    totalTaxableAmountCents: number;
+    totalCatDueCents: number;
+  };
+  totalsCents: {
+    totalLiabilityCents: number;
+    incomeTaxCents: number;
+    uscCents: number;
+    prsiCents: number;
+    cgtCents: number;
+    vatCents: number;
+    stampDutyCents: number;
+    catCents: number;
+  };
+  reasoningNotes: string[];
+  assumptions: string[];
+  unresolvedQuestions: string[];
+  outOfScopeIssues: string[];
+}

@@ -4,6 +4,7 @@ export { calculateVat } from './vat.js';
 export { calculateCgt } from './cgt.js';
 export { calculateStampDuty } from './stamp-duty.js';
 export { calculateCat } from './cat.js';
+export { calculateProfessionalTaxReasoning } from './professional-tax-reasoning.js';
 export type {
   TaxRates,
   IncomeTaxParams,
@@ -28,4 +29,16 @@ export type {
   PersonalTaxIncomeSourceKind,
   TaxCreditKey,
   TaxBand,
+  TaxpayerProfile,
+  TaxCaseFact,
+  ProfessionalCapitalGainEntry,
+  ProfessionalVatEntry,
+  ProfessionalStampDutyEntry,
+  ProfessionalCatEntry,
+  ProfessionalTaxReasoningParams,
+  ProfessionalCapitalGainEntryResult,
+  ProfessionalVatEntryResult,
+  ProfessionalStampDutyEntryResult,
+  ProfessionalCatEntryResult,
+  ProfessionalTaxReasoningResult,
 } from './types.js';

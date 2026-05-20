@@ -4,8 +4,15 @@ import type {
   FilingStatus,
   PersonalTaxIncomeSourceKind,
   PrsiClass,
+  ProfessionalCapitalGainEntry,
+  ProfessionalCatEntry,
+  ProfessionalStampDutyEntry,
+  ProfessionalTaxReasoningParams,
+  ProfessionalVatEntry,
   StampDutyPropertyType,
+  TaxCaseFact,
   TaxCreditKey,
+  TaxpayerProfile,
   VatCode,
   VatDirection,
 } from '@irish-tax-mcp/core';
@@ -116,6 +123,8 @@ const STAMP_DUTY_TYPES = ['residential', 'non_residential', 'shares'] as const;
 const CAT_GROUPS = ['A', 'B', 'C'] as const;
 const PERSONAL_TAX_SOURCE_KINDS = ['employment', 'self_employment', 'pension', 'other'] as const;
 const REFERENCE_TOPICS = ['income_tax', 'usc', 'prsi', 'tax_credits', 'cgt', 'vat', 'stamp_duty', 'cat'] as const;
+const RESIDENCY_STATUSES = ['resident', 'non_resident', 'unknown'] as const;
+const CAT_ENTRY_KINDS = ['gift', 'inheritance'] as const;
 
 function parseIncomeSource(input: unknown): AnnualPersonalTaxIncomeSource {
   const record = asRecord(input);
@@ -135,6 +144,89 @@ function parseIncomeSource(input: unknown): AnnualPersonalTaxIncomeSource {
     grossIncomeCents: requireNonNegativeInteger(record, 'grossIncomeCents'),
     prsiClass,
   };
+}
+
+function optionalObjectArray(input: Record<string, unknown>, key: string): unknown[] {
+  if (!(key in input) || input[key] === undefined) {
+    return [];
+  }
+  const value = input[key];
+  if (!Array.isArray(value)) {
+    throw new Error(`Field "${key}" must be an array.`);
+  }
+  return value;
+}
+
+function parseTaxpayer(input: unknown): TaxpayerProfile {
+  const record = asRecord(input);
+  let residencyStatus: TaxpayerProfile['residencyStatus'];
+  if ('residencyStatus' in record && record.residencyStatus !== undefined) {
+    residencyStatus = requireEnumValue(record, 'residencyStatus', RESIDENCY_STATUSES);
+  }
+  return {
+    filingStatus: requireEnumValue<FilingStatus>(record, 'filingStatus', FILING_STATUSES),
+    residencyStatus,
+  };
+}
+
+function parseCapitalGainEntry(input: unknown): ProfessionalCapitalGainEntry {
+  const record = asRecord(input);
+  const description = typeof record.description === 'string' ? record.description : undefined;
+  return {
+    gainCents: requireNonNegativeInteger(record, 'gainCents'),
+    description,
+  };
+}
+
+function parseVatEntry(input: unknown): ProfessionalVatEntry {
+  const record = asRecord(input);
+  const description = typeof record.description === 'string' ? record.description : undefined;
+  return {
+    amountCents: requireNonNegativeInteger(record, 'amountCents'),
+    vatCode: requireEnumValue<VatCode>(record, 'vatCode', VAT_CODES),
+    direction: requireEnumValue<VatDirection>(record, 'direction', VAT_DIRECTIONS),
+    description,
+  };
+}
+
+function parseStampDutyEntry(input: unknown): ProfessionalStampDutyEntry {
+  const record = asRecord(input);
+  const description = typeof record.description === 'string' ? record.description : undefined;
+  return {
+    considerationCents: requireNonNegativeInteger(record, 'considerationCents'),
+    propertyType: requireEnumValue<StampDutyPropertyType>(record, 'propertyType', STAMP_DUTY_TYPES),
+    description,
+  };
+}
+
+function parseCatEntry(input: unknown): ProfessionalCatEntry {
+  const record = asRecord(input);
+  const description = typeof record.description === 'string' ? record.description : undefined;
+  return {
+    kind: requireEnumValue(record, 'kind', CAT_ENTRY_KINDS),
+    benefitCents: requireNonNegativeInteger(record, 'benefitCents'),
+    group: requireEnumValue<CatGroup>(record, 'group', CAT_GROUPS),
+    priorTaxableBenefitsCents: optionalNonNegativeInteger(record, 'priorTaxableBenefitsCents'),
+    applySmallGiftExemption: optionalBoolean(record, 'applySmallGiftExemption'),
+    description,
+  };
+}
+
+function parseTaxCaseFact(input: unknown): TaxCaseFact {
+  const record = asRecord(input);
+  const key = record.key;
+  const value = record.value;
+  const source = record.source;
+  if (typeof key !== 'string' || key.length === 0) {
+    throw new Error('Field "key" must be a non-empty string.');
+  }
+  if (typeof value !== 'string') {
+    throw new Error('Field "value" must be a string.');
+  }
+  if (source !== undefined && typeof source !== 'string') {
+    throw new Error('Field "source" must be a string when provided.');
+  }
+  return { key, value, source };
 }
 
 export function parseCalculateIncomeTax(input: unknown) {
@@ -218,5 +310,35 @@ export function parseReferenceLookup(input: unknown) {
   return {
     year: optionalYear(record),
     topic: requireEnumValue<ReferenceTopics>(record, 'topic', REFERENCE_TOPICS),
+  };
+}
+
+export function parseProfessionalTaxReasoning(input: unknown): {
+  year: number;
+  params: ProfessionalTaxReasoningParams;
+} {
+  const record = asRecord(input);
+  if (!('taxpayer' in record)) {
+    throw new Error('Field "taxpayer" is required.');
+  }
+
+  return {
+    year: optionalYear(record),
+    params: {
+      taxpayer: parseTaxpayer(record.taxpayer),
+      creditKeys: 'creditKeys' in record ? requireEnumArray<TaxCreditKey>(record, 'creditKeys', CREDIT_KEYS) : [],
+      incomeSources: optionalObjectArray(record, 'incomeSources').map(parseIncomeSource),
+      capitalGains: optionalObjectArray(record, 'capitalGains').map(parseCapitalGainEntry),
+      vatTransactions: optionalObjectArray(record, 'vatTransactions').map(parseVatEntry),
+      propertyTransactions: optionalObjectArray(record, 'propertyTransactions').map(parseStampDutyEntry),
+      giftsAndInheritances: optionalObjectArray(record, 'giftsAndInheritances').map(parseCatEntry),
+      suppliedFacts: optionalObjectArray(record, 'suppliedFacts').map(parseTaxCaseFact),
+      rawArtifacts: optionalObjectArray(record, 'rawArtifacts').map((item) => {
+        if (typeof item !== 'string') {
+          throw new Error('Field "rawArtifacts" must contain strings only.');
+        }
+        return item;
+      }),
+    },
   };
 }

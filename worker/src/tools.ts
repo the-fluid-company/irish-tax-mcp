@@ -201,6 +201,127 @@ export const TOOL_LIST = [
     },
   },
   {
+    name: 'reason_professional_tax_case',
+    description:
+      'Run deterministic multi-module Irish tax reasoning across structured taxpayer facts, connecting income, VAT, CGT, CAT, and stamp-duty modules into one professional review payload. All money is in euro cents.',
+    inputSchema: {
+      type: 'object',
+      required: ['taxpayer'],
+      properties: {
+        year: { type: 'integer', description: 'Tax year. Defaults to 2025.', default: 2025 },
+        taxpayer: {
+          type: 'object',
+          required: ['filingStatus'],
+          properties: {
+            filingStatus: {
+              type: 'string',
+              enum: ['single', 'married_one_income', 'married_two_incomes', 'widowed'],
+            },
+            residencyStatus: {
+              type: 'string',
+              enum: ['resident', 'non_resident', 'unknown'],
+              description: 'Non-resident scenarios are flagged as not fully modeled.',
+            },
+          },
+        },
+        creditKeys: {
+          type: 'array',
+          items: {
+            type: 'string',
+            enum: [
+              'personal_single',
+              'personal_married',
+              'paye',
+              'earned_income',
+              'home_carer',
+              'single_person_child_carer',
+            ],
+          },
+        },
+        incomeSources: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['kind', 'grossIncomeCents'],
+            properties: {
+              kind: { type: 'string', enum: ['employment', 'self_employment', 'pension', 'other'] },
+              grossIncomeCents: { type: 'integer' },
+              prsiClass: { type: 'string', enum: ['A', 'S', 'D'] },
+            },
+          },
+        },
+        capitalGains: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['gainCents'],
+            properties: {
+              gainCents: { type: 'integer' },
+              description: { type: 'string' },
+            },
+          },
+        },
+        vatTransactions: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['amountCents', 'vatCode', 'direction'],
+            properties: {
+              amountCents: { type: 'integer' },
+              vatCode: { type: 'string', enum: ['A', 'B', 'C', 'D'] },
+              direction: { type: 'string', enum: ['exclusive', 'inclusive'] },
+              description: { type: 'string' },
+            },
+          },
+        },
+        propertyTransactions: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['considerationCents', 'propertyType'],
+            properties: {
+              considerationCents: { type: 'integer' },
+              propertyType: { type: 'string', enum: ['residential', 'non_residential', 'shares'] },
+              description: { type: 'string' },
+            },
+          },
+        },
+        giftsAndInheritances: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['kind', 'benefitCents', 'group'],
+            properties: {
+              kind: { type: 'string', enum: ['gift', 'inheritance'] },
+              benefitCents: { type: 'integer' },
+              group: { type: 'string', enum: ['A', 'B', 'C'] },
+              priorTaxableBenefitsCents: { type: 'integer' },
+              applySmallGiftExemption: { type: 'boolean' },
+              description: { type: 'string' },
+            },
+          },
+        },
+        suppliedFacts: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['key', 'value'],
+            properties: {
+              key: { type: 'string' },
+              value: { type: 'string' },
+              source: { type: 'string' },
+            },
+          },
+        },
+        rawArtifacts: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Unparsed raw inputs are accepted for audit trail but flagged as not yet deterministically modeled.',
+        },
+      },
+    },
+  },
+  {
     name: 'tax_reference_lookup',
     description:
       'Look up Irish tax reference data (rates, thresholds, credits) for a given topic and year.',

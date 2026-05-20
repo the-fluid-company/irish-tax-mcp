@@ -54,6 +54,24 @@ Tool payloads include:
 - `disclaimer`
 - `supportedYears`
 
+### `reason_professional_tax_case`
+This tool connects structured taxpayer facts across supported modules in one deterministic payload.
+
+It can combine:
+- annual personal tax inputs
+- VAT transactions
+- capital gains entries
+- stamp-duty transactions
+- CAT gifts/inheritances
+- structured facts for audit trail
+
+It will also surface:
+- `modulesTriggered`
+- `assumptions`
+- `unresolvedQuestions`
+- `outOfScopeIssues`
+- total liability in cents and euro
+
 ## Error responses
 
 ```json
@@ -78,3 +96,4 @@ Status codes:
 - Supported years are explicit.
 - Monetary values remain in euro cents unless an `Eur` field is also provided.
 - Complex reliefs and judgment-heavy advice remain out of scope.
+- Raw documents can be attached as artifacts for audit trail, but they are not yet deterministically parsed into facts by the engine.

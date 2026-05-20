@@ -3,6 +3,7 @@ import {
   calculateCat,
   calculateCgt,
   calculateIncomeTax,
+  calculateProfessionalTaxReasoning,
   calculateStampDuty,
   calculateVat,
 } from '@irish-tax-mcp/core';
@@ -20,6 +21,7 @@ import {
   parseCalculateIncomeTax,
   parseCalculateStampDuty,
   parseCalculateVat,
+  parseProfessionalTaxReasoning,
   parseReferenceLookup,
 } from './validation.js';
 
@@ -192,6 +194,28 @@ function handleToolCall(name: string, input: unknown): Record<string, unknown> {
           catDueEur: result.catDueCents / 100,
           remainingThresholdEur: result.remainingThresholdCents / 100,
           ratePercent: `${result.rate * 100}%`,
+        },
+        year,
+      );
+    }
+
+    case 'reason_professional_tax_case': {
+      const { year, params } = parseProfessionalTaxReasoning(input);
+      const rates = getRates(year);
+      const result = calculateProfessionalTaxReasoning(params, rates);
+      return annotateResult(
+        {
+          ...result,
+          totalsEur: {
+            totalLiabilityEur: result.totalsCents.totalLiabilityCents / 100,
+            incomeTaxEur: result.totalsCents.incomeTaxCents / 100,
+            uscEur: result.totalsCents.uscCents / 100,
+            prsiEur: result.totalsCents.prsiCents / 100,
+            cgtEur: result.totalsCents.cgtCents / 100,
+            vatEur: result.totalsCents.vatCents / 100,
+            stampDutyEur: result.totalsCents.stampDutyCents / 100,
+            catEur: result.totalsCents.catCents / 100,
+          },
         },
         year,
       );

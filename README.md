@@ -11,6 +11,7 @@ A lean public Irish tax calculation and reference server with:
 This project aims to be a strong Irish tax *assistant* for common scenarios by combining:
 - exact code-based calculations
 - structured published tax reference data
+- a deterministic professional-review reasoning layer that connects supported facts across modules
 - a public MCP endpoint for tool-using clients
 - a reusable skill package for agent systems
 
@@ -28,6 +29,7 @@ It does not attempt to automate judgement-heavy advice or facts not encoded in i
 - CGT
 - Stamp duty
 - CAT
+- Professional tax-case reasoning across structured facts
 
 ### Reference lookup
 - income tax
